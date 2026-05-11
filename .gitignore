@@ -1,14 +1,2 @@
 /target
-**/*.rs.bk
-Cargo.lock
-
-.DS_Store
-
-tmp
-
-/**/.idea
-*.iml
-
-# Claude Code
-CLAUDE.md
-.claude/
+/tmp

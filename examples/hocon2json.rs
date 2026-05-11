@@ -2,7 +2,7 @@ use std::env;
 
 use serde_json::{Number, Value};
 
-use hocon::{Error, Hocon, HoconLoader};
+use hocon_::{Error, Hocon, HoconLoader};
 
 fn hocon_to_json(hocon: Hocon) -> Option<Value> {
     match hocon {

@@ -21,7 +21,7 @@ use crate::Hocon;
 ///
 /// ```rust
 /// # use std::time::Duration;
-/// # use hocon::de::wrappers::Serde;
+/// # use hocon_::de::wrappers::Serde;
 /// # use serde::Deserialize;
 /// #[derive(Deserialize, Debug)]
 /// struct StructWithDuration {
@@ -30,7 +30,7 @@ use crate::Hocon;
 /// # fn usage() {
 /// # let doc = r#"{"a":"1 second"}"#;
 ///
-/// let my_struct: StructWithDuration = hocon::de::from_str(doc).unwrap();
+/// let my_struct: StructWithDuration = hocon_::de::from_str(doc).unwrap();
 /// assert_eq!(*my_struct.timeout, Duration::from_secs(1));
 /// # }
 /// ```
@@ -39,7 +39,7 @@ use crate::Hocon;
 ///
 /// ```rust
 /// # use std::time::Duration;
-/// # use hocon::de::wrappers::Serde;
+/// # use hocon_::de::wrappers::Serde;
 /// # use serde::Deserialize;
 /// #[derive(Deserialize, Debug)]
 /// struct StructWithDuration {
@@ -49,7 +49,7 @@ use crate::Hocon;
 /// # fn usage() {
 /// # let doc = r#"{"a":"1 second"}"#;
 ///
-/// let my_struct: StructWithDuration = hocon::de::from_str(doc).unwrap();
+/// let my_struct: StructWithDuration = hocon_::de::from_str(doc).unwrap();
 /// assert_eq!(my_struct.timeout, Duration::from_secs(1));
 /// # }
 /// ```

@@ -1,15 +1,14 @@
 [package]
-name = "hocon"
-version = "0.10.0"
-authors = ["François Mockers <mockersf@gmail.com>", "Mathias Oertel <mathias.oertel@gmail.com>"]
+name = "hocon_"
+version = "0.10.1"
 edition = "2024"
-description = "Reads HOCON configuration files"
-repository = "https://github.com/maoertel/hocon.rs"
-homepage = "https://github.com/maoertel/hocon.rs"
+authors = ["François Mockers <mockersf@gmail.com>", "Mathias Oertel <mathias.oertel@gmail.com>", "<github.com/pepa65>"]
+description = "Read HOCON configuration files"
+repository = "https://github.com/pepa65/hocon"
 documentation = "https://docs.rs/hocon"
-keywords = ["hocon", "configuration"]
-license = "MIT"
 readme = "README.md"
+license = "MIT"
+keywords = ["hocon", "configuration"]
 
 [dependencies]
 thiserror = "2.0"

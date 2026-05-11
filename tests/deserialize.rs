@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 
-use hocon::HoconLoader;
+use hocon_::HoconLoader;
 
 #[test]
 fn deserialize_struct_simple_path() {
@@ -12,7 +12,7 @@ fn deserialize_struct_simple_path() {
     }
 
     let s = r#"{"a":"dndjf"}"#;
-    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    let doc: Test = dbg!(hocon_::de::from_str(s)).expect("during test");
 
     assert_eq!(doc.a, "dndjf");
 }
@@ -111,7 +111,7 @@ fn deserialize_multilevel_struct_missing_field() {
 
 #[test]
 fn deserialize_struct_duration_wrapper() {
-    use hocon::de::wrappers::Serde;
+    use hocon_::de::wrappers::Serde;
     use std::time::Duration;
 
     #[derive(Deserialize, Debug)]
@@ -121,14 +121,14 @@ fn deserialize_struct_duration_wrapper() {
 
     let s = r#"{"a":"1 second"}"#;
 
-    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    let doc: Test = dbg!(hocon_::de::from_str(s)).expect("during test");
 
     assert_eq!(*doc.a, std::time::Duration::from_secs(1));
 }
 
 #[test]
 fn deserialize_struct_duration_with() {
-    use hocon::de::wrappers::Serde;
+    use hocon_::de::wrappers::Serde;
     use std::time::Duration;
     #[derive(Deserialize, Debug)]
     struct Test {
@@ -138,7 +138,7 @@ fn deserialize_struct_duration_with() {
 
     let s = r#"{"a":"1 second"}"#;
 
-    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    let doc: Test = dbg!(hocon_::de::from_str(s)).expect("during test");
 
     assert_eq!(doc.a, std::time::Duration::from_secs(1));
 }
@@ -153,7 +153,7 @@ fn deserialize_filesize() {
             data: 32.5M
         }"#;
 
-    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    let doc: Test = dbg!(hocon_::de::from_str(s)).expect("during test");
     assert_eq!(doc.data, 34078720);
 }
 
@@ -167,6 +167,6 @@ fn deserialize_filesize_as_float() {
             data: 2.5M
         }"#;
 
-    let doc: Test = dbg!(hocon::de::from_str(s)).expect("during test");
+    let doc: Test = dbg!(hocon_::de::from_str(s)).expect("during test");
     assert_eq!(doc.data, 2621440.0);
 }

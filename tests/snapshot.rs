@@ -5,7 +5,7 @@ use std::io::prelude::*;
 
 use insta::assert_debug_snapshot;
 
-use hocon::{self, Hocon};
+use hocon_::{self, Hocon};
 
 test_generator::test_expand_paths! { snapshot; "tests/data/*.conf" }
 
@@ -41,7 +41,7 @@ fn stable_readable_display(value: &Hocon) -> String {
 }
 
 fn snapshot(file_name: &str) {
-    let doc = hocon::HoconLoader::new()
+    let doc = hocon_::HoconLoader::new()
         .no_system()
         .load_file(file_name)
         .expect("during test")

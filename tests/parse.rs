@@ -1,7 +1,7 @@
 use rand::Rng;
 use rand::distr::Alphanumeric;
 
-use hocon::{Error, Hocon, HoconLoader};
+use hocon_::{Error, Hocon, HoconLoader};
 use linked_hash_map::LinkedHashMap;
 
 #[test]
@@ -984,7 +984,7 @@ fn parse_include_from_str() {
     let loader = dbg!(HoconLoader::new().strict().load_str(dbg!(s)));
 
     assert!(loader.is_err());
-    assert_eq!(loader.err(), Some(hocon::Error::IncludeNotAllowedFromStr))
+    assert_eq!(loader.err(), Some(hocon_::Error::IncludeNotAllowedFromStr))
 }
 
 #[test]

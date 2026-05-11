@@ -29,7 +29,7 @@ use std::ops::Index;
 /// # Usage
 ///
 /// ```rust
-/// # use hocon::{HoconLoader, Error, Hocon};
+/// # use hocon_::{HoconLoader, Error, Hocon};
 /// # fn main() -> Result<(), Error> {
 /// // Accessing a value of the expected type
 /// assert_eq!(
@@ -241,7 +241,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ size = 1.5KiB }"#)?.hocon()?["size"].as_bytes(),
@@ -287,7 +287,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -331,7 +331,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -354,7 +354,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -377,7 +377,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -400,7 +400,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -424,7 +424,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -448,7 +448,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hour  }"#)?
@@ -472,7 +472,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
@@ -496,7 +496,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
@@ -520,7 +520,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 days  }"#)?
@@ -544,7 +544,7 @@ impl Hocon {
     /// # Example
     ///
     /// ```rust
-    /// # use hocon::{Hocon, HoconLoader, Error};
+    /// # use hocon_::{Hocon, HoconLoader, Error};
     /// # fn main() -> Result<(), Error> {
     /// assert_eq!(
     ///     HoconLoader::new().load_str(r#"{ duration = 1.5 hours  }"#)?

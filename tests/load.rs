@@ -4,7 +4,7 @@ use std::io::prelude::*;
 test_generator::test_expand_paths! { file_load; "tests/data/*.conf" }
 
 fn file_load(file_name: &str) {
-    let doc = hocon::HoconLoader::new()
+    let doc = hocon_::HoconLoader::new()
         .no_system()
         .load_file(file_name)
         .map(|doc| doc.hocon());
@@ -20,7 +20,7 @@ fn file_load(file_name: &str) {
 
 #[test]
 fn missing_file() {
-    let doc = hocon::HoconLoader::new().load_file("some/file.conf");
+    let doc = hocon_::HoconLoader::new().load_file("some/file.conf");
 
     assert!(dbg!(doc).is_err());
 }
