@@ -1,6 +1,6 @@
 [package]
 name = "hocon_"
-version = "0.10.16"
+version = "0.10.17"
 edition = "2024"
 authors = ["François Mockers <mockersf@gmail.com>", "Mathias Oertel <mathias.oertel@gmail.com>", "<github.com/pepa65>"]
 description = "Read HOCON configuration files"
