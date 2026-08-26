@@ -40,7 +40,23 @@ pub(crate) fn root<'a>(
     config: &'a HoconLoaderConfig,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<HoconInternal>> {
     move |input| {
+        // `possible_comment` is `opt(multiline_comment)`, and `multiline_comment`
+        // requires an actual comment. With blank lines and no comment it fails and
+        // `opt` consumes nothing, so the leading newlines survive. `space` does not
+        // match newlines either, so the input then slips past the `not(char('{'))`
+        // guard in `root_hash`.
+        let (input, _) = multispace0(input)?;
         let (input, _) = possible_comment(input)?;
+
+        // An empty document is an empty object. `root_hash` used to return this by
+        // accident; it now rejects an empty list, so handle the case explicitly.
+        // `parse_str_to_internal` appends a `\0` sentinel, which `str::trim` keeps.
+        if input
+            .trim_matches(|c: char| c.is_whitespace() || c == '\0')
+            .is_empty()
+        {
+            return Ok((input, Ok(HoconInternal::from_object(vec![]))));
+        }
 
         // Try root_include first
         if let Ok((remaining, result)) = root_include(config)(input) {
@@ -658,6 +674,12 @@ fn root_hash<'a>(
         // Make sure it doesn't start with '{'
         let (input, _) = not(char('{')).parse(input)?;
         let (input, hashlist) = separated_hashlist(config)(input)?;
+        // `separated_list0` also matches zero entries. Succeeding on an empty list
+        // makes every input look like a braceless object, which shadows the `hash`
+        // and `array` branches of `root`.
+        if hashlist.as_ref().map(|v| v.is_empty()).unwrap_or(false) {
+            return Err(NomErr::Error(NomError::new(input, ErrorKind::Many1)));
+        }
         let (input, _) = space(input)?;
 
         Ok((
