@@ -35,33 +35,87 @@ use crate::internals::HoconValue;
 use crate::internals::Include;
 use crate::internals::unescape;
 
+/// The deepest nesting the parser accepts.
+///
+/// A document nests through an object `{`, an array `[`, a substitution `${`,
+/// and a run of `include` statements at the start of a document. The parser
+/// recurses once per level in all four, so stack use grows with nesting depth.
+/// Without a bound, a deep document overflows the stack and aborts the
+/// process. A Rust stack overflow is not catchable, so the caller cannot
+/// defend against it. This limit turns that abort into a parse error.
+///
+/// The value is far above real documents, and low enough to be safe in the
+/// worst measured configuration: an unoptimised build on a spawned thread,
+/// which gets a 2 MB stack by default, overflows at about 180 levels of nested
+/// objects.
+///
+/// This is not [`crate::HoconLoader::max_include_depth`], which limits how
+/// many files an `include` chain may pull in. This limit is about the shape of
+/// one document.
+pub(crate) const MAX_DEPTH: usize = 128;
+
+/// Rejects a document that nests deeper than [`MAX_DEPTH`].
+fn too_deep<T>(input: &str) -> IResult<&str, T> {
+    Err(NomErr::Failure(NomError::new(input, ErrorKind::TooLarge)))
+}
+
+/// Tries a parser and keeps a [`NomErr::Failure`] instead of swallowing it.
+///
+/// Several parsers try one branch after another and treat any error as "this
+/// branch does not match". A depth error must not be read that way: the
+/// document is invalid, and the next branch would accept a truncated version
+/// of it. `Ok` becomes `Some`, a recoverable error becomes `None`, and a
+/// `Failure` propagates.
+#[allow(clippy::type_complexity)]
+fn attempt<O>(
+    result: IResult<&str, O>,
+) -> std::result::Result<Option<(&str, O)>, NomErr<NomError<&str>>> {
+    match result {
+        Ok(parsed) => Ok(Some(parsed)),
+        Err(e @ NomErr::Failure(_)) => Err(e),
+        Err(_) => Ok(None),
+    }
+}
+
 /// Root parser - the main entry point for parsing HOCON documents.
 pub(crate) fn root<'a>(
     config: &'a HoconLoaderConfig,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Result<HoconInternal>> {
+    root_at_depth(config, 0)
+}
+
+/// The root parser at a known nesting depth.
+///
+/// `root_include` reads one `include` and then parses the rest of the document
+/// through this function again. A long run of `include` statements therefore
+/// recurses, and it shares the limit with objects, arrays, and substitutions.
+fn root_at_depth<'a>(
+    config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<HoconInternal>> {
     move |input| {
         let (input, _) = possible_comment(input)?;
 
         // Try root_include first
-        if let Ok((remaining, result)) = root_include(config)(input) {
+        if let Some((remaining, result)) = attempt(root_include(config, depth)(input))? {
             let (remaining, _) = possible_comment(remaining)?;
             return Ok((remaining, result));
         }
 
         // Try root_hash (object without braces)
-        if let Ok((remaining, h)) = root_hash(config)(input) {
+        if let Some((remaining, h)) = attempt(root_hash(config, depth)(input))? {
             let (remaining, _) = possible_comment(remaining)?;
             return Ok((remaining, h.map(HoconInternal::from_object)));
         }
 
         // Try hash (object with braces)
-        if let Ok((remaining, h)) = hash(config)(input) {
+        if let Some((remaining, h)) = attempt(hash(config, depth)(input))? {
             let (remaining, _) = possible_comment(remaining)?;
             return Ok((remaining, h.map(HoconInternal::from_object)));
         }
 
         // Try array
-        if let Ok((remaining, a)) = array(config)(input) {
+        if let Some((remaining, a)) = attempt(array(config, depth)(input))? {
             let (remaining, _) = possible_comment(remaining)?;
             return Ok((remaining, a.map(HoconInternal::from_array)));
         }
@@ -300,16 +354,24 @@ fn unquoted_string(input: &str) -> IResult<&str, &str> {
 // Substitution parsers
 // ============================================================================
 
-fn path_substitution(input: &str) -> IResult<&str, HoconValue> {
+fn path_substitution(input: &str, depth: usize) -> IResult<&str, HoconValue> {
     let (input, _) = alt((tag("${?"), tag("${"))).parse(input)?;
-    let (input, val) = hocon_value(input)?;
+    // A substitution nests like an object or an array does, and it recurses
+    // through `hocon_value`. It carries the same depth limit.
+    if depth >= MAX_DEPTH {
+        return too_deep(input);
+    }
+    let (input, val) = hocon_value(input, depth + 1)?;
     let (input, _) = char('}').parse(input)?;
     Ok((input, val))
 }
 
-fn optional_path_substitution(input: &str) -> IResult<&str, HoconValue> {
+fn optional_path_substitution(input: &str, depth: usize) -> IResult<&str, HoconValue> {
     let (input, _) = tag("${?").parse(input)?;
-    let (input, val) = hocon_value(input)?;
+    if depth >= MAX_DEPTH {
+        return too_deep(input);
+    }
+    let (input, val) = hocon_value(input, depth + 1)?;
     let (input, _) = char('}').parse(input)?;
     Ok((input, val))
 }
@@ -318,19 +380,19 @@ fn optional_path_substitution(input: &str) -> IResult<&str, HoconValue> {
 // Value parsers
 // ============================================================================
 
-fn single_value(input: &str) -> IResult<&str, HoconValue> {
+fn single_value(input: &str, depth: usize) -> IResult<&str, HoconValue> {
     alt((
         multiline_string.map(|s| HoconValue::String(Rc::from(s))),
         string.map(|s: Cow<str>| HoconValue::String(Rc::from(s.as_ref()))),
         integer.map(HoconValue::Integer),
         float.map(HoconValue::Real),
         boolean.map(HoconValue::Boolean),
-        optional_path_substitution.map(|p| HoconValue::PathSubstitution {
+        (|i| optional_path_substitution(i, depth)).map(|p| HoconValue::PathSubstitution {
             target: Box::new(p),
             optional: true,
             original: None,
         }),
-        path_substitution.map(|p| HoconValue::PathSubstitution {
+        (|i| path_substitution(i, depth)).map(|p| HoconValue::PathSubstitution {
             target: Box::new(p),
             optional: false,
             original: None,
@@ -340,10 +402,10 @@ fn single_value(input: &str) -> IResult<&str, HoconValue> {
     .parse(input)
 }
 
-fn hocon_value(input: &str) -> IResult<&str, HoconValue> {
+fn hocon_value(input: &str, depth: usize) -> IResult<&str, HoconValue> {
     let (input, _) = possible_comment(input)?;
-    let (input, first_value) = single_value(input)?;
-    let (input, remaining_values) = many0(single_value).parse(input)?;
+    let (input, first_value) = single_value(input, depth)?;
+    let (input, remaining_values) = many0(|i| single_value(i, depth)).parse(input)?;
 
     let result = if remaining_values.is_empty() {
         first_value
@@ -449,6 +511,7 @@ fn include_parser(input: &str) -> IResult<&str, Include<'_>> {
 
 fn key_value<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Hash>> {
     move |input| {
         let (input, _) = ws(possible_comment).parse(input)?;
@@ -468,7 +531,7 @@ fn key_value<'a>(
             // Check for +=
             if let Ok((remaining, _)) = ws(tag::<&str, &str, NomError<&str>>("+=")).parse(remaining)
             {
-                let (remaining, val) = wrapper(config)(remaining)?;
+                let (remaining, val) = wrapper(config, depth)(remaining)?;
                 let item_id: Rc<str> = Rc::from(uuid::Uuid::new_v4().hyphenated().to_string());
                 return Ok((
                     remaining,
@@ -494,7 +557,7 @@ fn key_value<'a>(
 
             // Check for : or =
             if let Ok((remaining, _)) = colon_or_equals(remaining) {
-                let (remaining, val) = wrapper(config)(remaining)?;
+                let (remaining, val) = wrapper(config, depth)(remaining)?;
                 return Ok((
                     remaining,
                     val.map(|h| {
@@ -506,7 +569,7 @@ fn key_value<'a>(
             }
 
             // Check for direct hash (no separator)
-            if let Ok((remaining, h)) = hashes(config)(remaining) {
+            if let Some((remaining, h)) = attempt(hashes(config, depth)(remaining))? {
                 return Ok((
                     remaining,
                     h.map(|hash| {
@@ -525,7 +588,7 @@ fn key_value<'a>(
             // Check for +=
             if let Ok((remaining, _)) = ws(tag::<&str, &str, NomError<&str>>("+=")).parse(remaining)
             {
-                let (remaining, val) = wrapper(config)(remaining)?;
+                let (remaining, val) = wrapper(config, depth)(remaining)?;
                 let item_id: Rc<str> = Rc::from(uuid::Uuid::new_v4().hyphenated().to_string());
                 return Ok((
                     remaining,
@@ -551,7 +614,7 @@ fn key_value<'a>(
 
             // Check for : or =
             if let Ok((remaining, _)) = colon_or_equals(remaining) {
-                let (remaining, val) = wrapper(config)(remaining)?;
+                let (remaining, val) = wrapper(config, depth)(remaining)?;
                 return Ok((
                     remaining,
                     val.map(|h| {
@@ -563,7 +626,7 @@ fn key_value<'a>(
             }
 
             // Check for direct hash (no separator)
-            if let Ok((remaining, h)) = hashes(config)(remaining) {
+            if let Some((remaining, h)) = attempt(hashes(config, depth)(remaining))? {
                 return Ok((
                     remaining,
                     h.map(|hash| {
@@ -585,20 +648,25 @@ fn key_value<'a>(
 
 fn separated_hashlist<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Vec<Hash>>> {
     move |input| {
-        let (input, parsed) = separated_list0(separators, key_value(config)).parse(input)?;
+        let (input, parsed) = separated_list0(separators, key_value(config, depth)).parse(input)?;
         Ok((input, helper::extract_result(parsed)))
     }
 }
 
 fn hash<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Hash>> {
     move |input| {
         let (input, _) = space(input)?;
         let (input, _) = char('{').parse(input)?;
-        let (input, hashlist) = separated_hashlist(config)(input)?;
+        if depth >= MAX_DEPTH {
+            return too_deep(input);
+        }
+        let (input, hashlist) = separated_hashlist(config, depth + 1)(input)?;
         let (input, _) = closing(input, '}')?;
         let (input, _) = space(input)?;
 
@@ -611,11 +679,12 @@ fn hash<'a>(
 
 fn hashes<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Hash>> {
     move |input| {
-        let (input, maybe_substitution) = opt(path_substitution).parse(input)?;
-        let (input, first_hash) = hash(config)(input)?;
-        let (input, remaining_hashes) = many0(hash(config)).parse(input)?;
+        let (input, maybe_substitution) = opt(|i| path_substitution(i, depth)).parse(input)?;
+        let (input, first_hash) = hash(config, depth)(input)?;
+        let (input, remaining_hashes) = many0(hash(config, depth)).parse(input)?;
 
         let result = match (maybe_substitution, remaining_hashes.is_empty()) {
             (None, true) => first_hash,
@@ -652,12 +721,13 @@ fn hashes<'a>(
 
 fn root_hash<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Hash>> {
     move |input| {
         let (input, _) = space(input)?;
         // Make sure it doesn't start with '{'
         let (input, _) = not(char('{')).parse(input)?;
-        let (input, hashlist) = separated_hashlist(config)(input)?;
+        let (input, hashlist) = separated_hashlist(config, depth)(input)?;
         let (input, _) = space(input)?;
 
         Ok((
@@ -673,11 +743,16 @@ fn root_hash<'a>(
 
 fn array<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Vec<HoconInternal>>> {
     move |input| {
         let (input, _) = sp(char('[')).parse(input)?;
         let (input, _) = multispace0(input)?;
-        let (input, items) = separated_list0(separators, wrapper(config)).parse(input)?;
+        if depth >= MAX_DEPTH {
+            return too_deep(input);
+        }
+        let (input, items) =
+            separated_list0(separators, wrapper(config, depth + 1)).parse(input)?;
         let (input, _) = closing(input, ']')?;
 
         Ok((input, helper::extract_result(items)))
@@ -686,11 +761,12 @@ fn array<'a>(
 
 fn arrays<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<Vec<HoconInternal>>> {
     move |input| {
-        let (input, maybe_substitution) = opt(path_substitution).parse(input)?;
-        let (input, first_array) = array(config)(input)?;
-        let (input, remaining_arrays) = many0(array(config)).parse(input)?;
+        let (input, maybe_substitution) = opt(|i| path_substitution(i, depth)).parse(input)?;
+        let (input, first_array) = array(config, depth)(input)?;
+        let (input, remaining_arrays) = many0(array(config, depth)).parse(input)?;
 
         let result = match (maybe_substitution, remaining_arrays.is_empty()) {
             (None, true) => first_array,
@@ -730,17 +806,18 @@ fn arrays<'a>(
 
 fn wrapper<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<HoconInternal>> {
     move |input| {
         let (input, _) = possible_comment(input)?;
 
         // Try hashes first
-        if let Ok((remaining, h)) = hashes(config)(input) {
+        if let Some((remaining, h)) = attempt(hashes(config, depth)(input))? {
             return Ok((remaining, h.map(HoconInternal::from_object)));
         }
 
         // Try arrays
-        if let Ok((remaining, a)) = arrays(config)(input) {
+        if let Some((remaining, a)) = attempt(arrays(config, depth)(input))? {
             return Ok((remaining, a.map(HoconInternal::from_array)));
         }
 
@@ -750,7 +827,7 @@ fn wrapper<'a>(
         }
 
         // Try value
-        let (remaining, val) = hocon_value(input)?;
+        let (remaining, val) = hocon_value(input, depth)?;
         Ok((remaining, Ok(HoconInternal::from_value(val))))
     }
 }
@@ -761,10 +838,19 @@ fn wrapper<'a>(
 
 fn root_include<'a>(
     config: &'a HoconLoaderConfig,
+    depth: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Result<HoconInternal>> {
     move |input| {
         let (input, included) = ws(include_parser).parse(input)?;
-        let (input, doc) = root(config)(input)?;
+        // Unlike an object, an array, or a substitution, a run of `include`
+        // statements has a way out that does not recurse: `root_hash` reads
+        // the rest of them in a loop. So this limit is a recoverable error,
+        // not a `Failure`. The document still parses; only the recursion
+        // stops.
+        if depth >= MAX_DEPTH {
+            return Err(NomErr::Error(NomError::new(input, ErrorKind::TooLarge)));
+        }
+        let (input, doc) = root_at_depth(config, depth + 1)(input)?;
         Ok((input, doc.and_then(|mut d| d.add_include(included, config))))
     }
 }
