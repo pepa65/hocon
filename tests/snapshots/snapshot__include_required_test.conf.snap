@@ -1,0 +1,5 @@
+---
+source: tests/snapshot.rs
+expression: stable_readable_display(&doc)
+---
+"{a: 5, additional: \"value\", b: 6.7, c: [1, 2, 3], d: true, e: \"val\", f: {g: false}}"

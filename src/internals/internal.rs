@@ -14,12 +14,29 @@ use super::value::HoconValue;
 pub(crate) enum Include<'a> {
     File(Cow<'a, str>),
     Url(Cow<'a, str>),
+    RequiredFile(Cow<'a, str>),
+    RequiredUrl(Cow<'a, str>),
 }
 impl<'a> Include<'a> {
     fn included(&self) -> &Cow<'a, str> {
         match self {
             Include::File(s) => s,
             Include::Url(s) => s,
+            Include::RequiredFile(s) => s,
+            Include::RequiredUrl(s) => s,
+        }
+    }
+
+    /// A required include that cannot be resolved is an error, not a `BadValue`.
+    fn is_required(&self) -> bool {
+        matches!(self, Include::RequiredFile(_) | Include::RequiredUrl(_))
+    }
+
+    /// Marks this include as required, as written by `include required(...)`.
+    pub(crate) fn into_required(self) -> Self {
+        match self {
+            Include::File(s) | Include::RequiredFile(s) => Include::RequiredFile(s),
+            Include::Url(s) | Include::RequiredUrl(s) => Include::RequiredUrl(s),
         }
     }
 }
@@ -167,7 +184,7 @@ impl HoconInternal {
             })
         } else {
             let included_parsed = match included {
-                Include::File(ref path) => {
+                Include::File(ref path) | Include::RequiredFile(ref path) => {
                     let include_config = config
                         .included_from()
                         .with_file(std::path::Path::new(path.as_ref()).to_path_buf());
@@ -179,13 +196,11 @@ impl HoconInternal {
                         .and_then(|s| include_config.parse_str_to_internal(s))
                 }
                 #[cfg(feature = "url-support")]
-                Include::Url(ref url) => {
-                    config
-                        .load_url(url)
-                        .map_err(|_| crate::error::Error::Include {
-                            path: url.to_string(),
-                        })
-                }
+                Include::Url(ref url) | Include::RequiredUrl(ref url) => config
+                    .load_url(url)
+                    .map_err(|_| crate::error::Error::Include {
+                        path: url.to_string(),
+                    }),
                 #[cfg(not(feature = "url-support"))]
                 _ => Err(crate::error::Error::DisabledExternalUrl),
             };
@@ -207,6 +222,7 @@ impl HoconInternal {
                         })
                         .collect(),
                 }),
+                Err(error) if included.is_required() => Err(error),
                 Err(error) => Ok(Self {
                     internal: vec![(
                         vec![HoconValue::String(Rc::from(included.included().as_ref()))],

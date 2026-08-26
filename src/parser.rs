@@ -416,13 +416,9 @@ fn colon_or_equals(input: &str) -> IResult<&str, char> {
 // Include parser
 // ============================================================================
 
-fn include_parser(input: &str) -> IResult<&str, Include<'_>> {
-    let (input, _) = tag("include ").parse(input)?;
-    let (input, _) = ws(many0(newline)).parse(input)?;
-
-    // Parse the include target with surrounding spaces
-    let (input, _) = space(input)?;
-    let (input, included) = alt((
+/// Parses the target of an `include`: `file(...)`, `url(...)`, or a bare quoted string.
+fn include_target(input: &str) -> IResult<&str, Include<'_>> {
+    alt((
         |i| {
             let (i, _) = tag("file(").parse(i)?;
             let (i, file_name) = string(i)?;
@@ -436,6 +432,24 @@ fn include_parser(input: &str) -> IResult<&str, Include<'_>> {
             Ok((i, Include::Url(url)))
         },
         string.map(Include::File),
+    ))
+    .parse(input)
+}
+
+fn include_parser(input: &str) -> IResult<&str, Include<'_>> {
+    let (input, _) = tag("include ").parse(input)?;
+    let (input, _) = ws(many0(newline)).parse(input)?;
+
+    // Parse the include target with surrounding spaces
+    let (input, _) = space(input)?;
+    let (input, included) = alt((
+        |i| {
+            let (i, _) = tag("required(").parse(i)?;
+            let (i, inner) = include_target(i)?;
+            let (i, _) = tag(")").parse(i)?;
+            Ok((i, inner.into_required()))
+        },
+        include_target,
     ))
     .parse(input)?;
     let (input, _) = space(input)?;
