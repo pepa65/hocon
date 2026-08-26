@@ -300,18 +300,31 @@ fn unquoted_string(input: &str) -> IResult<&str, &str> {
 // Substitution parsers
 // ============================================================================
 
+/// Parses the body of a substitution, that is the part after `${` or `${?`.
+///
+/// The `${` is already read, so the document can only hold a substitution
+/// here. HOCON has no literal `${` in unquoted text, and a missing `}` is
+/// therefore a syntax error. The parser reports it as a [`NomErr::Failure`],
+/// which stops the caller from reading the same text again as a plain string.
+/// That repeat used to double the work for each unclosed `${?` in the
+/// document.
+fn substitution_body(input: &str) -> IResult<&str, HoconValue> {
+    hocon_value(input)
+        .and_then(|(input, val)| {
+            let (input, _) = char('}').parse(input)?;
+            Ok((input, val))
+        })
+        .map_err(|_| NomErr::Failure(NomError::new(input, ErrorKind::Tag)))
+}
+
 fn path_substitution(input: &str) -> IResult<&str, HoconValue> {
     let (input, _) = alt((tag("${?"), tag("${"))).parse(input)?;
-    let (input, val) = hocon_value(input)?;
-    let (input, _) = char('}').parse(input)?;
-    Ok((input, val))
+    substitution_body(input)
 }
 
 fn optional_path_substitution(input: &str) -> IResult<&str, HoconValue> {
     let (input, _) = tag("${?").parse(input)?;
-    let (input, val) = hocon_value(input)?;
-    let (input, _) = char('}').parse(input)?;
-    Ok((input, val))
+    substitution_body(input)
 }
 
 // ============================================================================
