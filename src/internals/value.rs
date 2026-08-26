@@ -151,6 +151,8 @@ impl HoconValue {
                 if Some(fixed_up_path.clone()) == substituting_path {
                     Ok(Hocon::Null)
                 } else {
+                    let fallback_included_path = included_path.clone();
+                    let fallback_substituting_path = substituting_path;
                     match (
                         config.strict,
                         config.system,
@@ -173,7 +175,17 @@ impl HoconValue {
                                 original,
                             ) {
                                 (Ok(val), _, _) => Ok(Hocon::String(val)),
-                                (_, true, Some(val)) => val.simple_finalize(),
+                                // The previous value of the key can be any
+                                // value, a concatenation or another
+                                // substitution included, so resolve it the
+                                // same way as a value found in the tree.
+                                (_, true, Some(val)) => val.finalize(
+                                    root,
+                                    config,
+                                    in_concat,
+                                    fallback_included_path,
+                                    fallback_substituting_path,
+                                ),
                                 _ => Ok(public_bad_value_or_err!(config, err)),
                             }
                         }
@@ -194,22 +206,6 @@ impl HoconValue {
             HoconValue::EmptyArray => unreachable!(),
             HoconValue::PathSubstitutionInParent(_) => unreachable!(),
             HoconValue::ToConcatToArray { .. } => unreachable!(),
-        }
-    }
-
-    // This method should mostly not be used, and will be called during substitution with default value
-    // It will fail badly if trying to substitue a missing value defaulting to a complex value
-    // For now, it's just a somewhat more complete version of "string_value"
-    pub(crate) fn simple_finalize(self) -> Result<Hocon, crate::Error> {
-        match self {
-            HoconValue::Null(_) => Ok(Hocon::Null),
-            HoconValue::Boolean(b) => Ok(Hocon::Boolean(b)),
-            HoconValue::Integer(i) => Ok(Hocon::Integer(i)),
-            HoconValue::Real(f) => Ok(Hocon::Real(f)),
-            HoconValue::String(s) => Ok(Hocon::String(s.to_string())),
-            HoconValue::UnquotedString(ref s) if s.as_ref() == "null" => Ok(Hocon::Null),
-            HoconValue::UnquotedString(s) => Ok(Hocon::String(s.trim().to_string())),
-            _ => unimplemented!(),
         }
     }
 
