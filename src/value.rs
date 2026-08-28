@@ -107,7 +107,7 @@ impl Index<usize> for Hocon {
                     .keys()
                     .filter_map(|k| k.parse::<usize>().ok().map(|v| (k, v)))
                     .collect::<Vec<_>>();
-                keys_as_usize.sort_by(|(_, v0), (_, v1)| v0.cmp(v1));
+                keys_as_usize.sort_by_key(|(_, v0)| *v0);
                 keys_as_usize
                     .get(idx)
                     .and_then(|(k, _)| hash.get(*k))

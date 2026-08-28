@@ -397,7 +397,7 @@ impl<'de, R: Read> serde::de::Deserializer<'de> for &mut Deserializer<R> {
             .read
             .get_attribute_value(&self.current_field)
             .ok_or_else(|| Error {
-                message: format!("missing sequence for field \"{}\"", &self.current_field),
+                message: format!("missing sequence for field \"{}\"", self.current_field),
             })?
             .clone();
         let read = match list {
