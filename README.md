@@ -1,6 +1,15 @@
-# HOCON.rs [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Realease Doc](https://docs.rs/hocon/badge.svg)](https://docs.rs/hocon) [![Crate](https://img.shields.io/crates/v/hocon.svg)](https://crates.io/crates/hocon)
-
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Realease Doc](https://docs.rs/hocon/badge.svg)](https://docs.rs/hocon) [![Crate](https://img.shields.io/crates/v/hocon.svg)](https://crates.io/crates/hocon)
+# hocon 0.12.0
+## Replacement for the totp-lite crate
 **This repo is cloned from github.com/maoertel/hocon.rs (which is fixing the unmaintained github.com/mockersf/hocon.rs) in order to add it to crates.io**
+
+To use this crate instead of the unmaintained `hocon` crate, add this to `Cargo.toml`:
+```
+[dependencies]
+hocon = { package = "hocon_", version = "0.12.0" }
+```
+
+## Documentation
 
 The API docs for the master branch are published [here](https://mockersf.github.io/hocon.rs/).
 
