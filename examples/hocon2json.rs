@@ -2,9 +2,9 @@ use std::env;
 
 use serde_json::{Number, Value};
 
-use hocon_::{Error, Hocon, HoconLoader};
+use hocon::{Error, Hocon, HoconLoader};
 
-fn hocon_to_json(hocon: Hocon) -> Option<Value> {
+fn hoconto_json(hocon: Hocon) -> Option<Value> {
     match hocon {
         Hocon::Boolean(b) => Some(Value::Bool(b)),
         Hocon::Integer(i) => Some(Value::Number(Number::from(i))),
@@ -20,11 +20,11 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
         }
         Hocon::String(s) => Some(Value::String(s)),
         Hocon::Array(vec) => Some(Value::Array(
-            vec.into_iter().filter_map(hocon_to_json).collect(),
+            vec.into_iter().filter_map(hoconto_json).collect(),
         )),
         Hocon::Hash(map) => Some(Value::Object(
             map.into_iter()
-                .map(|(k, v)| (k, hocon_to_json(v)))
+                .map(|(k, v)| (k, hoconto_json(v)))
                 .filter_map(|(k, v)| v.map(|v| (k, v)))
                 .collect(),
         )),
@@ -35,7 +35,7 @@ fn hocon_to_json(hocon: Hocon) -> Option<Value> {
 
 fn parse_to_json(path: &str) -> Result<String, Error> {
     let hocon = HoconLoader::new().no_system().load_file(path)?.hocon()?;
-    let json: Option<_> = hocon_to_json(hocon);
+    let json: Option<_> = hoconto_json(hocon);
     serde_json::to_string_pretty(&json).map_err(|e| Error::Deserialization {
         message: e.to_string(),
     })

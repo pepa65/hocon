@@ -302,14 +302,14 @@ fn unquoted_string(input: &str) -> IResult<&str, &str> {
 
 fn path_substitution(input: &str) -> IResult<&str, HoconValue> {
     let (input, _) = alt((tag("${?"), tag("${"))).parse(input)?;
-    let (input, val) = hocon_value(input)?;
+    let (input, val) = hoconvalue(input)?;
     let (input, _) = char('}').parse(input)?;
     Ok((input, val))
 }
 
 fn optional_path_substitution(input: &str) -> IResult<&str, HoconValue> {
     let (input, _) = tag("${?").parse(input)?;
-    let (input, val) = hocon_value(input)?;
+    let (input, val) = hoconvalue(input)?;
     let (input, _) = char('}').parse(input)?;
     Ok((input, val))
 }
@@ -340,7 +340,7 @@ fn single_value(input: &str) -> IResult<&str, HoconValue> {
     .parse(input)
 }
 
-fn hocon_value(input: &str) -> IResult<&str, HoconValue> {
+fn hoconvalue(input: &str) -> IResult<&str, HoconValue> {
     let (input, _) = possible_comment(input)?;
     let (input, first_value) = single_value(input)?;
     let (input, remaining_values) = many0(single_value).parse(input)?;
@@ -750,7 +750,7 @@ fn wrapper<'a>(
         }
 
         // Try value
-        let (remaining, val) = hocon_value(input)?;
+        let (remaining, val) = hoconvalue(input)?;
         Ok((remaining, Ok(HoconInternal::from_value(val))))
     }
 }

@@ -10,6 +10,9 @@ readme = "README.md"
 license = "MIT"
 keywords = ["hocon", "configuration"]
 
+[lib]
+name = "hocon"
+
 [dependencies]
 thiserror = "2"
 nom = "8"

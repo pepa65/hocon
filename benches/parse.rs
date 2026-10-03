@@ -4,7 +4,7 @@ extern crate criterion;
 use criterion::Criterion;
 
 fn parse(file_name: &str) {
-    hocon_::HoconLoader::new()
+    hocon::HoconLoader::new()
         .no_system()
         .load_file(file_name)
         .expect("during test")

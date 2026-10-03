@@ -894,7 +894,7 @@ mod tests {
     }
 
     #[test]
-    fn hocon_and_serde_default() {
+    fn hoconand_serde_default() {
         #[derive(Deserialize, Debug)]
         struct MyStructWithDefaultField {
             #[serde(default)]
