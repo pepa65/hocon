@@ -2,7 +2,7 @@
 name = "hocon_"
 version = "0.12.0"
 edition = "2024"
-rust_version = "1.89.0"
+rust-version = "1.89.0"
 authors = ["François Mockers <mockersf@gmail.com>", "Mathias Oertel <mathias.oertel@gmail.com>", "<github.com/pepa65>"]
 description = "Read HOCON configuration files"
 repository = "https://github.com/pepa65/hocon"
